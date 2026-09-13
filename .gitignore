@@ -12,4 +12,8 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules
 .next/
+playwright-report/
+test-results/
+blob-report/
+tsconfig.tsbuildinfo
 .DS_Store
