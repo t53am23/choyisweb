@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, Smartphone, Clock, Star, Check } from "lucide-react"
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, Loader2, Smartphone } from "lucide-react"
+import {
+  confirmUtilityCheckout,
+  startUtilityCheckout,
+  UtilityCheckoutError,
+  type UtilityCheckoutResult,
+} from "@/lib/utilities/checkout"
 
 const providers = [
   { id: "mtn", name: "MTN", color: "#FFCC00" },
@@ -16,17 +22,136 @@ const providers = [
 
 const quickAmounts = [100, 200, 500, 1000, 2000, 5000]
 
-const recentNumbers = [
-  { number: "0801 234 5678", provider: "MTN", name: "Self" },
-  { number: "0803 456 7890", provider: "Glo", name: "Mum" },
-  { number: "0705 678 9012", provider: "Airtel", name: "Brother" },
-]
+const PENDING_AIRTIME_KEY = "choyisweb:pending-airtime-transaction"
+const POLL_INTERVAL_MS = 5_000
+const MAX_POLL_ATTEMPTS = 60
+
+type CheckoutStage = "idle" | "initializing" | "awaiting_payment" | "confirming" | "delivered"
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+}
+
+function checkoutMessage(error: unknown) {
+  if (error instanceof UtilityCheckoutError) return error.message
+  if (error instanceof Error) return error.message
+  return "Airtime checkout could not be completed."
+}
 
 export default function AirtimePage() {
   const [selectedProvider, setSelectedProvider] = React.useState(providers[0])
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
   const [amount, setAmount] = React.useState("")
   const [phoneNumber, setPhoneNumber] = React.useState("")
+  const [stage, setStage] = React.useState<CheckoutStage>("idle")
+  const [error, setError] = React.useState("")
+  const [receipt, setReceipt] = React.useState<UtilityCheckoutResult | null>(null)
+  const [pendingTransactionId, setPendingTransactionId] = React.useState<string | null>(null)
+  const idempotencyKey = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    setPendingTransactionId(sessionStorage.getItem(PENDING_AIRTIME_KEY))
+  }, [])
+
+  const rememberPendingTransaction = (transactionId: string) => {
+    sessionStorage.setItem(PENDING_AIRTIME_KEY, transactionId)
+    setPendingTransactionId(transactionId)
+  }
+
+  const completeTransaction = (result: UtilityCheckoutResult) => {
+    sessionStorage.removeItem(PENDING_AIRTIME_KEY)
+    setPendingTransactionId(null)
+    setReceipt(result)
+    setStage("delivered")
+    idempotencyKey.current = null
+  }
+
+  const confirmUntilComplete = async (transactionId: string, paymentWindow?: Window | null) => {
+    setStage("confirming")
+    let lastError: unknown = null
+
+    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) await wait(POLL_INTERVAL_MS)
+
+      try {
+        const result = await confirmUtilityCheckout(transactionId)
+        if (result.status === "delivered") {
+          completeTransaction(result)
+          paymentWindow?.close()
+          return
+        }
+        if (result.status === "failed") {
+          throw new UtilityCheckoutError("Payment completed, but airtime delivery failed.", "DELIVERY_FAILED")
+        }
+      } catch (caught) {
+        lastError = caught
+        const retryable = caught instanceof UtilityCheckoutError && caught.retryable
+        if (!retryable) throw caught
+      }
+
+      if (paymentWindow?.closed) break
+    }
+
+    setStage("awaiting_payment")
+    throw new UtilityCheckoutError(
+      lastError
+        ? "Payment has not been confirmed yet. Use Check payment status to continue."
+        : "Payment confirmation is taking longer than expected. Use Check payment status to continue.",
+      "PAYMENT_PENDING",
+      true,
+    )
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError("")
+    setReceipt(null)
+
+    const paymentWindow = window.open(
+      "",
+      "choyis-paystack",
+      "popup=yes,width=520,height=760,resizable=yes,scrollbars=yes",
+    )
+
+    if (!paymentWindow) {
+      setError("Allow payment pop-ups for this site, then try again.")
+      return
+    }
+
+    try {
+      setStage("initializing")
+      idempotencyKey.current ||= crypto.randomUUID()
+      const checkout = await startUtilityCheckout({
+        serviceType: "airtime",
+        phone: phoneNumber,
+        provider: selectedProvider.id as "mtn" | "glo" | "airtel" | "9mobile",
+        amount: Number(amount),
+        idempotencyKey: idempotencyKey.current,
+      })
+
+      rememberPendingTransaction(checkout.transactionId)
+      setStage("awaiting_payment")
+      paymentWindow.location.replace(checkout.authorizationUrl)
+      await confirmUntilComplete(checkout.transactionId, paymentWindow)
+    } catch (caught) {
+      paymentWindow.close()
+      setError(checkoutMessage(caught))
+      setStage("idle")
+    }
+  }
+
+  const handleResumeConfirmation = async () => {
+    if (!pendingTransactionId) return
+    setError("")
+    try {
+      await confirmUntilComplete(pendingTransactionId)
+    } catch (caught) {
+      setError(checkoutMessage(caught))
+      setStage("idle")
+    }
+  }
+
+  const isBusy = stage === "initializing" || stage === "confirming"
 
   return (
     <div className="space-y-6">
@@ -47,7 +172,8 @@ export default function AirtimePage() {
               <CardTitle className="text-lg">Airtime Top-Up</CardTitle>
               <CardDescription>Enter details to top up airtime</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
+              <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Provider Selection */}
               <div className="space-y-2">
                 <Label>Network Provider</Label>
@@ -103,6 +229,9 @@ export default function AirtimePage() {
                   placeholder="0801 234 5678"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
                   className="bg-background"
                 />
               </div>
@@ -137,6 +266,10 @@ export default function AirtimePage() {
                   placeholder="Enter amount"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  min={50}
+                  max={50000}
+                  step={1}
+                  required
                   className="bg-background"
                 />
               </div>
@@ -159,13 +292,39 @@ export default function AirtimePage() {
                 </div>
               )}
 
+              {error && (
+                <div role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {receipt && (
+                <div role="status" className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-700">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>Airtime delivered successfully. Reference: {receipt.reference}</span>
+                </div>
+              )}
+
               {/* Submit */}
               <Button
+                type="submit"
                 className="w-full bg-[var(--service-airtime)] hover:bg-[var(--service-airtime)]/90 text-white"
-                disabled={!amount || !phoneNumber}
+                disabled={!amount || !phoneNumber || isBusy}
               >
-                Buy Airtime
+                {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {stage === "initializing"
+                  ? "Starting secure payment…"
+                  : stage === "confirming"
+                    ? "Confirming payment…"
+                    : "Buy Airtime"}
               </Button>
+              {pendingTransactionId && !isBusy && (
+                <Button type="button" variant="outline" className="w-full" onClick={handleResumeConfirmation}>
+                  Check payment status
+                </Button>
+              )}
+              </form>
             </CardContent>
           </Card>
         </div>
@@ -181,21 +340,11 @@ export default function AirtimePage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {recentNumbers.map((item) => (
-                  <button
-                    key={item.number}
-                    type="button"
-                    onClick={() => setPhoneNumber(item.number.replace(/\s/g, ""))}
-                    className="w-full flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/30 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.number}</p>
-                      <p className="text-xs text-muted-foreground">{item.name} • {item.provider}</p>
-                    </div>
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                ))}
+              <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                <p className="text-sm font-medium text-foreground">No recent purchases yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Your last successful top-ups will appear here when transaction history is connected.
+                </p>
               </div>
             </CardContent>
           </Card>
