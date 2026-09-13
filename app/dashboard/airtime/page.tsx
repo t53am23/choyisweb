@@ -12,13 +12,7 @@ import {
   UtilityCheckoutError,
   type UtilityCheckoutResult,
 } from "@/lib/utilities/checkout"
-
-const providers = [
-  { id: "mtn", name: "MTN", color: "#FFCC00" },
-  { id: "glo", name: "Glo", color: "#50B848" },
-  { id: "airtel", name: "Airtel", color: "#E30613" },
-  { id: "9mobile", name: "9mobile", color: "#006848" },
-]
+import { airtimeProviders } from "@/lib/utilities/catalog"
 
 const quickAmounts = [100, 200, 500, 1000, 2000, 5000]
 
@@ -39,7 +33,7 @@ function checkoutMessage(error: unknown) {
 }
 
 export default function AirtimePage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(providers[0])
+  const [selectedProvider, setSelectedProvider] = React.useState(airtimeProviders[0])
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
   const [amount, setAmount] = React.useState("")
   const [phoneNumber, setPhoneNumber] = React.useState("")
@@ -124,7 +118,7 @@ export default function AirtimePage() {
       const checkout = await startUtilityCheckout({
         serviceType: "airtime",
         phone: phoneNumber,
-        provider: selectedProvider.id as "mtn" | "glo" | "airtel" | "9mobile",
+        provider: selectedProvider.serviceId as "mtn" | "glo" | "airtel" | "etisalat",
         amount: Number(amount),
         idempotencyKey: idempotencyKey.current,
       })
@@ -188,7 +182,7 @@ export default function AirtimePage() {
                         className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
                         style={{ backgroundColor: selectedProvider.color }}
                       >
-                        {selectedProvider.name[0]}
+                        {selectedProvider.badge}
                       </span>
                       <span className="font-medium">{selectedProvider.name}</span>
                     </span>
@@ -196,9 +190,9 @@ export default function AirtimePage() {
                   </button>
                   {showProviderDropdown && (
                     <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-card shadow-lg">
-                      {providers.map((provider) => (
+                      {airtimeProviders.map((provider) => (
                         <button
-                          key={provider.id}
+                          key={provider.serviceId}
                           type="button"
                           onClick={() => {
                             setSelectedProvider(provider)
@@ -210,7 +204,7 @@ export default function AirtimePage() {
                             className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
                             style={{ backgroundColor: provider.color }}
                           >
-                            {provider.name[0]}
+                            {provider.badge}
                           </span>
                           <span className="font-medium">{provider.name}</span>
                         </button>

@@ -5,35 +5,58 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, Zap, Clock, Check, AlertCircle } from "lucide-react"
-
-const discos = [
-  { id: "ikedc", name: "IKEDC (Ikeja Electric)", region: "Lagos" },
-  { id: "ekedc", name: "EKEDC (Eko Electric)", region: "Lagos" },
-  { id: "aedc", name: "AEDC (Abuja Electric)", region: "Abuja" },
-  { id: "phed", name: "PHED (Port Harcourt)", region: "Rivers" },
-  { id: "kedco", name: "KEDCO (Kano Electric)", region: "Kano" },
-  { id: "ibedc", name: "IBEDC (Ibadan Electric)", region: "Oyo" },
-]
-
-const recentMeters = [
-  { meterNumber: "45123456789", name: "Home", disco: "IKEDC" },
-  { meterNumber: "45987654321", name: "Office", disco: "EKEDC" },
-]
+import { AlertCircle, Check, ChevronDown, Clock, Loader2, Zap } from "lucide-react"
+import { electricityProviders } from "@/lib/utilities/catalog"
+import { verifyUtilityCustomer } from "@/lib/utilities/vtpass"
 
 export default function ElectricityPage() {
-  const [selectedDisco, setSelectedDisco] = React.useState(discos[0])
+  const [selectedDisco, setSelectedDisco] = React.useState(electricityProviders[0])
   const [showDiscoDropdown, setShowDiscoDropdown] = React.useState(false)
   const [meterNumber, setMeterNumber] = React.useState("")
   const [amount, setAmount] = React.useState("")
   const [meterVerified, setMeterVerified] = React.useState(false)
   const [customerName, setCustomerName] = React.useState("")
+  const [customerAddress, setCustomerAddress] = React.useState("")
+  const [verifying, setVerifying] = React.useState(false)
+  const [verifyError, setVerifyError] = React.useState("")
+  const verificationController = React.useRef<AbortController | null>(null)
 
-  const verifyMeter = () => {
-    // Simulated verification
-    setMeterVerified(true)
-    setCustomerName("John Doe")
+  const resetVerification = () => {
+    verificationController.current?.abort()
+    verificationController.current = null
+    setVerifying(false)
+    setMeterVerified(false)
+    setCustomerName("")
+    setCustomerAddress("")
+    setVerifyError("")
   }
+
+  const verifyMeter = async () => {
+    resetVerification()
+    const controller = new AbortController()
+    verificationController.current = controller
+    setVerifying(true)
+    try {
+      const customer = await verifyUtilityCustomer(selectedDisco.serviceId, meterNumber.trim(), controller.signal)
+      if (verificationController.current !== controller) return
+      setCustomerName(customer.name)
+      setCustomerAddress(customer.address)
+      setMeterVerified(true)
+    } catch (reason) {
+      if (controller.signal.aborted) return
+      setVerifyError(reason instanceof Error ? reason.message : "Could not verify this meter.")
+    } finally {
+      if (verificationController.current === controller) {
+        verificationController.current = null
+        setVerifying(false)
+      }
+    }
+  }
+
+  React.useEffect(() => () => {
+    verificationController.current?.abort()
+    verificationController.current = null
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -77,13 +100,14 @@ export default function ElectricityPage() {
                   </button>
                   {showDiscoDropdown && (
                     <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-card shadow-lg max-h-64 overflow-y-auto">
-                      {discos.map((disco) => (
+                      {electricityProviders.map((disco) => (
                         <button
-                          key={disco.id}
+                          key={disco.serviceId}
                           type="button"
                           onClick={() => {
                             setSelectedDisco(disco)
                             setShowDiscoDropdown(false)
+                            resetVerification()
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg"
                         >
@@ -112,7 +136,7 @@ export default function ElectricityPage() {
                     value={meterNumber}
                     onChange={(e) => {
                       setMeterNumber(e.target.value)
-                      setMeterVerified(false)
+                      resetVerification()
                     }}
                     className="bg-background flex-1"
                   />
@@ -120,11 +144,15 @@ export default function ElectricityPage() {
                     type="button"
                     variant="outline"
                     onClick={verifyMeter}
-                    disabled={!meterNumber}
+                    disabled={!meterNumber.trim() || verifying}
                   >
-                    Verify
+                    {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {verifying ? "Verifying…" : "Verify with VTpass"}
                   </Button>
                 </div>
+                {verifyError && (
+                  <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{verifyError}</p>
+                )}
               </div>
 
               {/* Verification Result */}
@@ -134,6 +162,7 @@ export default function ElectricityPage() {
                   <div>
                     <p className="text-sm font-medium">Meter Verified</p>
                     <p className="text-xs text-muted-foreground">Customer: {customerName}</p>
+                    {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
                   </div>
                 </div>
               )}
@@ -178,22 +207,23 @@ export default function ElectricityPage() {
                     <span className="font-medium">₦{Number(amount).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Service Fee</span>
-                    <span className="font-medium">₦100</span>
+                    <span className="text-muted-foreground">Provider charge</span>
+                    <span className="font-medium">Confirmed at checkout</span>
                   </div>
                   <div className="border-t border-border pt-2 flex justify-between">
-                    <span className="font-medium">Total</span>
-                    <span className="font-semibold">₦{(Number(amount) + 100).toLocaleString()}</span>
+                    <span className="font-medium">Electricity value</span>
+                    <span className="font-semibold">₦{Number(amount).toLocaleString()}</span>
                   </div>
                 </div>
               )}
 
               {/* Submit */}
               <Button
+                type="button"
                 className="w-full bg-[var(--service-electricity)] hover:bg-[var(--service-electricity)]/90 text-white"
-                disabled={!amount || !meterVerified}
+                disabled
               >
-                Pay Electricity Bill
+                Payment connection follows the verification batch
               </Button>
             </CardContent>
           </Card>
@@ -210,24 +240,7 @@ export default function ElectricityPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {recentMeters.map((item) => (
-                  <button
-                    key={item.meterNumber}
-                    type="button"
-                    onClick={() => {
-                      setMeterNumber(item.meterNumber)
-                      verifyMeter()
-                    }}
-                    className="w-full flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/30 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.meterNumber}</p>
-                      <p className="text-xs text-muted-foreground">{item.name} • {item.disco}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">No saved meters yet. Verified live transactions will appear here after checkout is connected.</p>
             </CardContent>
           </Card>
 

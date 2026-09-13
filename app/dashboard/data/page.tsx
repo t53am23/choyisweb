@@ -5,62 +5,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronDown, Globe, Clock, Star, Check } from "lucide-react"
-
-const providers = [
-  { id: "mtn", name: "MTN", color: "#FFCC00" },
-  { id: "glo", name: "Glo", color: "#50B848" },
-  { id: "airtel", name: "Airtel", color: "#E30613" },
-  { id: "9mobile", name: "9mobile", color: "#006848" },
-]
-
-const dataPlans = {
-  mtn: [
-    { id: "1", name: "500MB", validity: "30 days", price: 500 },
-    { id: "2", name: "1GB", validity: "30 days", price: 1000 },
-    { id: "3", name: "2GB", validity: "30 days", price: 1500 },
-    { id: "4", name: "3GB", validity: "30 days", price: 2000 },
-    { id: "5", name: "5GB", validity: "30 days", price: 3000 },
-    { id: "6", name: "10GB", validity: "30 days", price: 5000 },
-  ],
-  glo: [
-    { id: "1", name: "500MB", validity: "14 days", price: 500 },
-    { id: "2", name: "1.35GB", validity: "14 days", price: 1000 },
-    { id: "3", name: "2.9GB", validity: "30 days", price: 1500 },
-    { id: "4", name: "4.1GB", validity: "30 days", price: 2000 },
-    { id: "5", name: "7.7GB", validity: "30 days", price: 3000 },
-    { id: "6", name: "10GB", validity: "30 days", price: 5000 },
-  ],
-  airtel: [
-    { id: "1", name: "500MB", validity: "30 days", price: 500 },
-    { id: "2", name: "1GB", validity: "30 days", price: 1000 },
-    { id: "3", name: "2GB", validity: "30 days", price: 1500 },
-    { id: "4", name: "3GB", validity: "30 days", price: 2000 },
-    { id: "5", name: "4.5GB", validity: "30 days", price: 3000 },
-    { id: "6", name: "10GB", validity: "30 days", price: 5000 },
-  ],
-  "9mobile": [
-    { id: "1", name: "500MB", validity: "30 days", price: 500 },
-    { id: "2", name: "1GB", validity: "30 days", price: 1000 },
-    { id: "3", name: "1.5GB", validity: "30 days", price: 1500 },
-    { id: "4", name: "2GB", validity: "30 days", price: 2000 },
-    { id: "5", name: "3GB", validity: "30 days", price: 2500 },
-    { id: "6", name: "5GB", validity: "30 days", price: 3500 },
-  ],
-}
-
-const recentNumbers = [
-  { number: "0801 234 5678", provider: "MTN", name: "Self" },
-  { number: "0803 456 7890", provider: "Glo", name: "Mum" },
-]
+import { AlertCircle, Check, ChevronDown, Clock, Globe, Loader2, RefreshCw } from "lucide-react"
+import { dataProviders } from "@/lib/utilities/catalog"
+import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
+import type { UtilityVariation } from "@/lib/utilities/vtpass"
 
 export default function DataPage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(providers[0])
+  const [selectedProvider, setSelectedProvider] = React.useState(dataProviders[0])
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
-  const [selectedPlan, setSelectedPlan] = React.useState<typeof dataPlans.mtn[0] | null>(null)
+  const [selectedPlan, setSelectedPlan] = React.useState<UtilityVariation | null>(null)
   const [phoneNumber, setPhoneNumber] = React.useState("")
-
-  const currentPlans = dataPlans[selectedProvider.id as keyof typeof dataPlans]
+  const { variations: currentPlans, loading, error, retry } = useUtilityVariations(selectedProvider.serviceId)
 
   return (
     <div className="space-y-6">
@@ -96,7 +51,7 @@ export default function DataPage() {
                         className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
                         style={{ backgroundColor: selectedProvider.color }}
                       >
-                        {selectedProvider.name[0]}
+                        {selectedProvider.badge}
                       </span>
                       <span className="font-medium">{selectedProvider.name}</span>
                     </span>
@@ -104,9 +59,9 @@ export default function DataPage() {
                   </button>
                   {showProviderDropdown && (
                     <div className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-card shadow-lg">
-                      {providers.map((provider) => (
+                      {dataProviders.map((provider) => (
                         <button
-                          key={provider.id}
+                          key={provider.serviceId}
                           type="button"
                           onClick={() => {
                             setSelectedProvider(provider)
@@ -119,7 +74,7 @@ export default function DataPage() {
                             className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
                             style={{ backgroundColor: provider.color }}
                           >
-                            {provider.name[0]}
+                            {provider.badge}
                           </span>
                           <span className="font-medium">{provider.name}</span>
                         </button>
@@ -144,8 +99,27 @@ export default function DataPage() {
 
               {/* Data Plans */}
               <div className="space-y-2">
-                <Label>Select Data Plan</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Select Data Plan</Label>
+                  <span className="text-xs font-medium text-emerald-600">Live VTpass prices</span>
+                </div>
+                {loading && (
+                  <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border p-8 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading live plans…
+                  </div>
+                )}
+                {!loading && error && (
+                  <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+                    <div className="flex items-start gap-2 text-destructive"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div>
+                    <Button type="button" variant="outline" size="sm" className="mt-3" onClick={retry}>
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry
+                    </Button>
+                  </div>
+                )}
+                {!loading && !error && currentPlans.length === 0 && (
+                  <p className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">No plans are available for this provider right now.</p>
+                )}
+                {!loading && !error && currentPlans.length > 0 && <div className="grid max-h-[28rem] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                   {currentPlans.map((plan) => (
                     <button
                       key={plan.id}
@@ -158,11 +132,10 @@ export default function DataPage() {
                       }`}
                     >
                       <p className="font-semibold text-foreground">{plan.name}</p>
-                      <p className="text-xs text-muted-foreground">{plan.validity}</p>
-                      <p className="text-sm font-medium text-[var(--service-data)] mt-1">₦{plan.price.toLocaleString()}</p>
+                      <p className="mt-1 text-sm font-medium text-[var(--service-data)]">₦{plan.amount.toLocaleString()}</p>
                     </button>
                   ))}
-                </div>
+                </div>}
               </div>
 
               {/* Summary */}
@@ -170,7 +143,7 @@ export default function DataPage() {
                 <div className="rounded-lg bg-secondary/50 p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Data Plan</span>
-                    <span className="font-medium">{selectedPlan.name} ({selectedPlan.validity})</span>
+                    <span className="font-medium text-right">{selectedPlan.name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Fee</span>
@@ -178,17 +151,18 @@ export default function DataPage() {
                   </div>
                   <div className="border-t border-border pt-2 flex justify-between">
                     <span className="font-medium">Total</span>
-                    <span className="font-semibold">₦{selectedPlan.price.toLocaleString()}</span>
+                    <span className="font-semibold">₦{selectedPlan.amount.toLocaleString()}</span>
                   </div>
                 </div>
               )}
 
               {/* Submit */}
               <Button
+                type="button"
                 className="w-full bg-[var(--service-data)] hover:bg-[var(--service-data)]/90 text-white"
-                disabled={!selectedPlan || !phoneNumber}
+                disabled
               >
-                Buy Data
+                Payment connection follows the catalogue batch
               </Button>
             </CardContent>
           </Card>
@@ -205,22 +179,7 @@ export default function DataPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {recentNumbers.map((item) => (
-                  <button
-                    key={item.number}
-                    type="button"
-                    onClick={() => setPhoneNumber(item.number.replace(/\s/g, ""))}
-                    className="w-full flex items-center justify-between rounded-lg border border-border p-3 hover:border-primary/30 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.number}</p>
-                      <p className="text-xs text-muted-foreground">{item.name} • {item.provider}</p>
-                    </div>
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">No recent purchases yet. Successful live transactions will appear here after checkout is connected.</p>
             </CardContent>
           </Card>
 

@@ -6,7 +6,7 @@ export type UtilityCheckoutIntent =
   | {
       serviceType: "airtime"
       phone: string
-      provider: "mtn" | "glo" | "airtel" | "9mobile"
+      provider: "mtn" | "glo" | "airtel" | "etisalat"
       amount: number
       idempotencyKey: string
     }

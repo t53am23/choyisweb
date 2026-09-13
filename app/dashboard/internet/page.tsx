@@ -4,36 +4,17 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wifi, ChevronDown, Clock, CheckCircle2 } from "lucide-react"
-
-const providers = [
-  { id: "spectranet", name: "Spectranet", logo: "S" },
-  { id: "smile", name: "Smile", logo: "SM" },
-  { id: "swift", name: "Swift", logo: "SW" },
-  { id: "ipnx", name: "ipNX", logo: "IP" },
-]
-
-const plans = [
-  { id: "1", name: "10GB - 30 Days", price: 5000, provider: "spectranet" },
-  { id: "2", name: "25GB - 30 Days", price: 10000, provider: "spectranet" },
-  { id: "3", name: "50GB - 30 Days", price: 18000, provider: "spectranet" },
-  { id: "4", name: "Unlimited - 30 Days", price: 25000, provider: "spectranet" },
-  { id: "5", name: "15GB - 30 Days", price: 6000, provider: "smile" },
-  { id: "6", name: "30GB - 30 Days", price: 11000, provider: "smile" },
-]
-
-const recentTransactions = [
-  { id: "1", plan: "25GB - 30 Days", provider: "Spectranet", amount: 10000, status: "completed", date: "Today, 2:30 PM" },
-  { id: "2", plan: "15GB - 30 Days", provider: "Smile", amount: 6000, status: "completed", date: "Yesterday" },
-]
+import { AlertCircle, ChevronDown, Clock, Loader2, RefreshCw, Wifi } from "lucide-react"
+import { internetProviders } from "@/lib/utilities/catalog"
+import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
+import type { UtilityVariation } from "@/lib/utilities/vtpass"
 
 export default function InternetPage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(providers[0])
-  const [selectedPlan, setSelectedPlan] = React.useState<string | null>(null)
+  const [selectedProvider, setSelectedProvider] = React.useState(internetProviders[0])
+  const [selectedPlan, setSelectedPlan] = React.useState<UtilityVariation | null>(null)
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
   const [accountNumber, setAccountNumber] = React.useState("")
-
-  const filteredPlans = plans.filter(plan => plan.provider === selectedProvider.id)
+  const { variations: plans, loading, error, retry } = useUtilityVariations(selectedProvider.serviceId)
 
   return (
     <div className="space-y-6">
@@ -67,7 +48,7 @@ export default function InternetPage() {
                   >
                     <span className="flex items-center gap-3">
                       <span className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center text-xs font-bold text-cyan-600">
-                        {selectedProvider.logo}
+                        {selectedProvider.badge}
                       </span>
                       <span className="font-medium">{selectedProvider.name}</span>
                     </span>
@@ -75,9 +56,9 @@ export default function InternetPage() {
                   </button>
                   {showProviderDropdown && (
                     <div className="absolute z-10 mt-2 w-full rounded-lg border border-border bg-card shadow-lg">
-                      {providers.map((provider) => (
+                      {internetProviders.map((provider) => (
                         <button
-                          key={provider.id}
+                          key={provider.serviceId}
                           type="button"
                           onClick={() => {
                             setSelectedProvider(provider)
@@ -87,7 +68,7 @@ export default function InternetPage() {
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-secondary transition-colors first:rounded-t-lg last:rounded-b-lg"
                         >
                           <span className="h-8 w-8 rounded-lg bg-cyan-100 flex items-center justify-center text-xs font-bold text-cyan-600">
-                            {provider.logo}
+                            {provider.badge}
                           </span>
                           <span>{provider.name}</span>
                         </button>
@@ -111,31 +92,43 @@ export default function InternetPage() {
 
               {/* Plan Selection */}
               <div>
-                <label className="text-sm font-medium mb-2 block">Select Plan</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {filteredPlans.map((plan) => (
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className="text-sm font-medium">Select Plan</label>
+                  <span className="text-xs font-medium text-emerald-600">Live VTpass prices</span>
+                </div>
+                {loading && <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading live plans…</div>}
+                {!loading && error && (
+                  <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+                    <div className="flex items-start gap-2 text-destructive"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{error}</span></div>
+                    <Button type="button" variant="outline" size="sm" className="mt-3" onClick={retry}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry</Button>
+                  </div>
+                )}
+                {!loading && !error && plans.length === 0 && <p className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">No plans are available for this provider right now.</p>}
+                {!loading && !error && plans.length > 0 && <div className="grid max-h-[30rem] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                  {plans.map((plan) => (
                     <button
                       key={plan.id}
                       type="button"
-                      onClick={() => setSelectedPlan(plan.id)}
+                      onClick={() => setSelectedPlan(plan)}
                       className={`flex flex-col items-start rounded-lg border p-4 transition-all text-left ${
-                        selectedPlan === plan.id
+                        selectedPlan?.id === plan.id
                           ? "border-cyan-500 bg-cyan-50"
                           : "border-border hover:border-cyan-300"
                       }`}
                     >
                       <span className="text-sm font-medium">{plan.name}</span>
-                      <span className="text-lg font-semibold text-cyan-600">₦{plan.price.toLocaleString()}</span>
+                      <span className="text-lg font-semibold text-cyan-600">₦{plan.amount.toLocaleString()}</span>
                     </button>
                   ))}
-                </div>
+                </div>}
               </div>
 
-              <Button 
+              <Button
+                type="button"
                 className="w-full h-12 bg-cyan-500 hover:bg-cyan-600 text-white"
-                disabled={!selectedPlan || !accountNumber}
+                disabled
               >
-                Continue to Payment
+                Payment connection follows the catalogue batch
               </Button>
             </CardContent>
           </Card>
@@ -150,23 +143,7 @@ export default function InternetPage() {
                 Recent Internet Purchases
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{tx.plan}</p>
-                    <p className="text-xs text-muted-foreground">{tx.provider} • {tx.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">₦{tx.amount.toLocaleString()}</p>
-                    <p className="text-xs text-emerald-500 flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {tx.status}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
+            <CardContent><p className="text-sm text-muted-foreground">No recent purchases yet. Successful live transactions will appear here after checkout is connected.</p></CardContent>
           </Card>
         </div>
       </div>
