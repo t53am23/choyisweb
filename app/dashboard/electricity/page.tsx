@@ -187,7 +187,7 @@ export default function ElectricityPage() {
                     disabled={!meterNumber.trim() || verifying}
                   >
                     {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {verifying ? "Verifying…" : "Verify with VTpass"}
+                    {verifying ? "Verifying…" : "Verify"}
                   </Button>
                 </div>
                 {verifyError && (

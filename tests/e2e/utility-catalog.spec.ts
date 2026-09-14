@@ -35,14 +35,14 @@ async function mockVtpass(page: Page) {
         await route.fulfill({
           contentType: "application/json",
           body: JSON.stringify(body.type === "prepaid"
-            ? { code: "000", content: { Customer_Name: "Verified VTpass Customer", Meter_Number: body.billersCode, Meter_Type: "PREPAID", Min_Purchase_Amount: 900 } }
+            ? { code: "000", content: { Customer_Name: "Verified Customer", Meter_Number: body.billersCode, Meter_Type: "PREPAID", Min_Purchase_Amount: 900 } }
             : { code: "011", response_description: "Meter type is required" }),
         })
         return
       }
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ code: "000", content: { Customer_Name: "Verified VTpass Customer" } }),
+        body: JSON.stringify({ code: "000", content: { Customer_Name: "Verified Customer" } }),
       })
       return
     }
@@ -68,8 +68,9 @@ test.describe("Live utility catalogue", () => {
     await page.goto("/dashboard/tv")
     await expect(page.getByRole("button", { name: /DStv Live Padi/ })).toBeVisible()
     await page.getByPlaceholder("Enter your smartcard or IUC number").fill("1234567890")
-    await page.getByRole("button", { name: "Verify smartcard with VTpass" }).click()
-    await expect(page.getByText("Verified customer: Verified VTpass Customer")).toBeVisible()
+    await page.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect(page.getByText("Verified customer: Verified Customer")).toBeVisible()
+    await expect(page.getByRole("main")).not.toContainText(/VTpass/i)
   })
 
   test("loads internet plans only for supported providers", async ({ page }) => {
@@ -88,8 +89,8 @@ test.describe("Live utility catalogue", () => {
     await yolaProvider.click()
 
     await page.getByLabel("Meter Number").fill("1234567890")
-    await page.getByRole("button", { name: "Verify with VTpass" }).click()
-    await expect(page.getByText("Customer: Verified VTpass Customer")).toBeVisible()
+    await page.getByRole("button", { name: "Verify", exact: true }).click()
+    await expect(page.getByText("Customer: Verified Customer")).toBeVisible()
     await expect(page.getByText("Meter: 1234567890")).toBeVisible()
     await expect(page.getByText("Minimum purchase: ₦900")).toBeVisible()
   })
@@ -101,7 +102,14 @@ test.describe("Live utility catalogue", () => {
     }))
     await page.goto("/dashboard/electricity")
     await page.getByLabel("Meter Number").fill("04198812754")
-    await page.getByRole("button", { name: "Verify with VTpass" }).click()
+    await page.getByRole("button", { name: "Verify", exact: true }).click()
     await expect(page.getByRole("main").getByRole("alert")).toContainText("not recognized")
+  })
+
+  test("keeps the utility provider implementation private", async ({ page }) => {
+    for (const route of ["data", "internet", "tv", "electricity"]) {
+      await page.goto(`/dashboard/${route}`)
+      await expect(page.getByRole("main")).not.toContainText(/VTpass/i)
+    }
   })
 })

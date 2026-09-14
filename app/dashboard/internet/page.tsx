@@ -94,7 +94,7 @@ export default function InternetPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <label className="text-sm font-medium">Select Plan</label>
-                  <span className="text-xs font-medium text-emerald-600">Live VTpass prices</span>
+                  <span className="text-xs font-medium text-emerald-600">Live prices</span>
                 </div>
                 {loading && <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading live plans…</div>}
                 {!loading && error && (

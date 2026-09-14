@@ -36,7 +36,7 @@ export default function TVPage() {
     try {
       const customer = await verifyUtilityCustomer(selectedProvider.serviceId, smartcardNumber.trim(), { signal: controller.signal })
       if (verificationController.current !== controller) return
-      if (!customer.name) throw new Error("VTpass verified the account but returned no customer name.")
+      if (!customer.name) throw new Error("The account was verified, but no customer name was returned. Please try again.")
       setVerifiedCustomer(customer.name)
     } catch (reason) {
       if (controller.signal.aborted) return
@@ -132,7 +132,7 @@ export default function TVPage() {
                 />
                 <Button type="button" variant="outline" className="mt-2" disabled={!smartcardNumber.trim() || verifying} onClick={verifySmartcard}>
                   {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {verifying ? "Verifying…" : "Verify smartcard with VTpass"}
+                  {verifying ? "Verifying…" : "Verify"}
                 </Button>
                 {verifiedCustomer && (
                   <div role="status" className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-sm text-emerald-700">
@@ -146,7 +146,7 @@ export default function TVPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <label className="text-sm font-medium">Select Package</label>
-                  <span className="text-xs font-medium text-emerald-600">Live VTpass prices</span>
+                  <span className="text-xs font-medium text-emerald-600">Live prices</span>
                 </div>
                 {loading && <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border p-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading live packages…</div>}
                 {!loading && error && (

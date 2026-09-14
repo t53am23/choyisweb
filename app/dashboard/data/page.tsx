@@ -101,7 +101,7 @@ export default function DataPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-3">
                   <Label>Select Data Plan</Label>
-                  <span className="text-xs font-medium text-emerald-600">Live VTpass prices</span>
+                  <span className="text-xs font-medium text-emerald-600">Live prices</span>
                 </div>
                 {loading && (
                   <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border p-8 text-sm text-muted-foreground">

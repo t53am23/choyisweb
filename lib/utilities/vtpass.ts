@@ -16,8 +16,8 @@ type VerifyUtilityOptions = {
 
 const variationCache = new Map<string, UtilityVariation[]>()
 
-function messageFrom(payload: VtpassPayload, fallback: string) {
-  for (const key of ["message", "error", "response_description"]) {
+function publicMessageFrom(payload: VtpassPayload, fallback: string) {
+  for (const key of ["public_message", "publicMessage"]) {
     const value = payload[key]
     if (typeof value === "string" && value.trim()) return value.trim()
   }
@@ -73,7 +73,7 @@ export async function getUtilityVariations(serviceId: string, signal?: AbortSign
   const payload = (await response.json().catch(() => ({}))) as VtpassPayload
 
   if (!response.ok || (typeof payload.code === "string" && payload.code !== "000")) {
-    throw new Error(messageFrom(payload, "Could not load live plans. Please try again."))
+    throw new Error(publicMessageFrom(payload, "Could not load live plans. Please try again."))
   }
 
   const variations = parseVariations(payload)
@@ -104,7 +104,7 @@ export async function verifyUtilityCustomer(
   const payload = (await response.json().catch(() => ({}))) as VtpassPayload
 
   if (!response.ok || payload.code !== "000") {
-    throw new Error(messageFrom(payload, "VTpass could not verify these account details."))
+    throw new Error(publicMessageFrom(payload, "We could not verify these account details. Please check them and try again."))
   }
 
   const content = payload.content
@@ -128,7 +128,7 @@ export async function verifyUtilityCustomer(
   const minimumPurchase = Number(minimumValue)
 
   if (!name && !address && meterNumber === undefined) {
-    throw new Error("VTpass did not return verified account details.")
+    throw new Error("We could not verify these account details. Please check them and try again.")
   }
 
   return {
