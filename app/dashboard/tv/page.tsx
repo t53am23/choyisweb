@@ -34,8 +34,9 @@ export default function TVPage() {
     verificationController.current = controller
     setVerifying(true)
     try {
-      const customer = await verifyUtilityCustomer(selectedProvider.serviceId, smartcardNumber.trim(), controller.signal)
+      const customer = await verifyUtilityCustomer(selectedProvider.serviceId, smartcardNumber.trim(), { signal: controller.signal })
       if (verificationController.current !== controller) return
+      if (!customer.name) throw new Error("VTpass verified the account but returned no customer name.")
       setVerifiedCustomer(customer.name)
     } catch (reason) {
       if (controller.signal.aborted) return

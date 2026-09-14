@@ -9,6 +9,11 @@ export type UtilityVariation = {
 
 type VtpassPayload = Record<string, unknown>
 
+type VerifyUtilityOptions = {
+  type?: "prepaid" | "postpaid"
+  signal?: AbortSignal
+}
+
 const variationCache = new Map<string, UtilityVariation[]>()
 
 function messageFrom(payload: VtpassPayload, fallback: string) {
@@ -76,7 +81,11 @@ export async function getUtilityVariations(serviceId: string, signal?: AbortSign
   return variations
 }
 
-export async function verifyUtilityCustomer(serviceId: string, billersCode: string, signal?: AbortSignal) {
+export async function verifyUtilityCustomer(
+  serviceId: string,
+  billersCode: string,
+  options: VerifyUtilityOptions = {},
+) {
   const { url, publishableKey } = getSupabasePublicConfig()
   const response = await fetch(`${url}/functions/v1/vtpass-utilities`, {
     method: "POST",
@@ -88,8 +97,9 @@ export async function verifyUtilityCustomer(serviceId: string, billersCode: stri
       action: "verify",
       serviceID: serviceId,
       billersCode,
+      ...(options.type ? { type: options.type } : {}),
     }),
-    signal,
+    signal: options.signal,
   })
   const payload = (await response.json().catch(() => ({}))) as VtpassPayload
 
@@ -99,15 +109,33 @@ export async function verifyUtilityCustomer(serviceId: string, billersCode: stri
 
   const content = payload.content
   const customer = content && typeof content === "object" ? (content as VtpassPayload) : {}
+  const wrongBillersCode = customer.WrongBillersCode === true || customer.WrongBillersCode === "true"
+
+  if (wrongBillersCode) {
+    throw new Error("This account number was not recognized for the selected provider and type.")
+  }
+
   const name = [customer.Customer_Name, customer.customer_name, customer.name]
     .find((value) => typeof value === "string" && value.trim())
   const address = [customer.Address, customer.address]
     .find((value) => typeof value === "string" && value.trim())
+  const meterNumber = [customer.Meter_Number, customer.MeterNumber, customer.meter_number, customer.Account_Number]
+    .find((value) => (typeof value === "string" || typeof value === "number") && String(value).trim())
+  const meterType = [customer.Meter_Type, customer.meter_type]
+    .find((value) => typeof value === "string" && value.trim())
+  const minimumValue = [customer.Min_Purchase_Amount, customer.Minimum_Amount, customer.Min_Purchase]
+    .find((value) => value !== null && value !== undefined && String(value).trim() !== "")
+  const minimumPurchase = Number(minimumValue)
 
-  if (typeof name !== "string") throw new Error("VTpass verified the account but returned no customer name.")
+  if (!name && !address && meterNumber === undefined) {
+    throw new Error("VTpass did not return verified account details.")
+  }
 
   return {
-    name: name.trim(),
+    name: typeof name === "string" ? name.trim() : "",
     address: typeof address === "string" ? address.trim() : "",
+    meterNumber: meterNumber === undefined ? "" : String(meterNumber).trim(),
+    meterType: typeof meterType === "string" ? meterType.trim() : "",
+    minimumPurchase: Number.isFinite(minimumPurchase) && minimumPurchase >= 0 ? minimumPurchase : null,
   }
 }

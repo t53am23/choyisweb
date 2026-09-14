@@ -9,14 +9,20 @@ import { AlertCircle, Check, ChevronDown, Clock, Loader2, Zap } from "lucide-rea
 import { electricityProviders } from "@/lib/utilities/catalog"
 import { verifyUtilityCustomer } from "@/lib/utilities/vtpass"
 
+type MeterType = "prepaid" | "postpaid"
+
 export default function ElectricityPage() {
   const [selectedDisco, setSelectedDisco] = React.useState(electricityProviders[0])
   const [showDiscoDropdown, setShowDiscoDropdown] = React.useState(false)
   const [meterNumber, setMeterNumber] = React.useState("")
+  const [meterType, setMeterType] = React.useState<MeterType>("prepaid")
   const [amount, setAmount] = React.useState("")
   const [meterVerified, setMeterVerified] = React.useState(false)
   const [customerName, setCustomerName] = React.useState("")
   const [customerAddress, setCustomerAddress] = React.useState("")
+  const [verifiedMeterNumber, setVerifiedMeterNumber] = React.useState("")
+  const [verifiedMeterType, setVerifiedMeterType] = React.useState("")
+  const [minimumPurchase, setMinimumPurchase] = React.useState<number | null>(null)
   const [verifying, setVerifying] = React.useState(false)
   const [verifyError, setVerifyError] = React.useState("")
   const verificationController = React.useRef<AbortController | null>(null)
@@ -28,6 +34,9 @@ export default function ElectricityPage() {
     setMeterVerified(false)
     setCustomerName("")
     setCustomerAddress("")
+    setVerifiedMeterNumber("")
+    setVerifiedMeterType("")
+    setMinimumPurchase(null)
     setVerifyError("")
   }
 
@@ -37,10 +46,16 @@ export default function ElectricityPage() {
     verificationController.current = controller
     setVerifying(true)
     try {
-      const customer = await verifyUtilityCustomer(selectedDisco.serviceId, meterNumber.trim(), controller.signal)
+      const customer = await verifyUtilityCustomer(selectedDisco.serviceId, meterNumber.trim(), {
+        type: meterType,
+        signal: controller.signal,
+      })
       if (verificationController.current !== controller) return
       setCustomerName(customer.name)
       setCustomerAddress(customer.address)
+      setVerifiedMeterNumber(customer.meterNumber)
+      setVerifiedMeterType(customer.meterType)
+      setMinimumPurchase(customer.minimumPurchase)
       setMeterVerified(true)
     } catch (reason) {
       if (controller.signal.aborted) return
@@ -125,6 +140,31 @@ export default function ElectricityPage() {
                 </div>
               </div>
 
+              {/* Meter Type */}
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Meter Type</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["prepaid", "postpaid"] as const).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      aria-pressed={meterType === type}
+                      onClick={() => {
+                        setMeterType(type)
+                        resetVerification()
+                      }}
+                      className={`rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
+                        meterType === type
+                          ? "border-[var(--service-electricity)] bg-[var(--service-electricity)]/10 text-[var(--service-electricity)]"
+                          : "border-border bg-background hover:border-[var(--service-electricity)]/40"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
               {/* Meter Number */}
               <div className="space-y-2">
                 <Label htmlFor="meter">Meter Number</Label>
@@ -161,8 +201,11 @@ export default function ElectricityPage() {
                   <Check className="h-5 w-5 text-[var(--service-airtime)]" />
                   <div>
                     <p className="text-sm font-medium">Meter Verified</p>
-                    <p className="text-xs text-muted-foreground">Customer: {customerName}</p>
+                    {customerName && <p className="text-xs text-muted-foreground">Customer: {customerName}</p>}
                     {customerAddress && <p className="text-xs text-muted-foreground">{customerAddress}</p>}
+                    {verifiedMeterNumber && <p className="text-xs text-muted-foreground">Meter: {verifiedMeterNumber}</p>}
+                    {verifiedMeterType && <p className="text-xs text-muted-foreground">Type: {verifiedMeterType}</p>}
+                    {minimumPurchase !== null && <p className="text-xs text-muted-foreground">Minimum purchase: ₦{minimumPurchase.toLocaleString()}</p>}
                   </div>
                 </div>
               )}
@@ -173,11 +216,11 @@ export default function ElectricityPage() {
                 <Input
                   id="amount"
                   type="number"
-                  placeholder="Enter amount (min ₦1,000)"
+                  placeholder={minimumPurchase === null ? "Enter amount" : `Minimum ₦${minimumPurchase.toLocaleString()}`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="bg-background"
-                  min={1000}
+                  min={minimumPurchase ?? undefined}
                 />
               </div>
 
@@ -258,7 +301,7 @@ export default function ElectricityPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-[var(--service-electricity)]" />
-                  <span className="text-sm">Min purchase: ₦1,000</span>
+                  <span className="text-sm">Minimum confirmed after verification</span>
                 </div>
               </div>
             </CardContent>

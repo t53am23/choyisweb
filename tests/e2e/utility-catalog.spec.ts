@@ -30,6 +30,16 @@ async function mockVtpass(page: Page) {
     }
 
     if (request.method() === "POST") {
+      const body = request.postDataJSON() as Record<string, unknown>
+      if (body.serviceID === "yola-electric") {
+        await route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify(body.type === "prepaid"
+            ? { code: "000", content: { Customer_Name: "Verified VTpass Customer", Meter_Number: body.billersCode, Meter_Type: "PREPAID", Min_Purchase_Amount: 900 } }
+            : { code: "011", response_description: "Meter type is required" }),
+        })
+        return
+      }
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({ code: "000", content: { Customer_Name: "Verified VTpass Customer" } }),
@@ -80,5 +90,18 @@ test.describe("Live utility catalogue", () => {
     await page.getByLabel("Meter Number").fill("1234567890")
     await page.getByRole("button", { name: "Verify with VTpass" }).click()
     await expect(page.getByText("Customer: Verified VTpass Customer")).toBeVisible()
+    await expect(page.getByText("Meter: 1234567890")).toBeVisible()
+    await expect(page.getByText("Minimum purchase: ₦900")).toBeVisible()
+  })
+
+  test("reports a VTpass wrong-billers-code response as an invalid meter", async ({ page }) => {
+    await page.route("**/functions/v1/vtpass-utilities", (route) => route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ code: "000", content: { WrongBillersCode: true } }),
+    }))
+    await page.goto("/dashboard/electricity")
+    await page.getByLabel("Meter Number").fill("04198812754")
+    await page.getByRole("button", { name: "Verify with VTpass" }).click()
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("not recognized")
   })
 })
