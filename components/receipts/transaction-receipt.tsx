@@ -35,9 +35,9 @@ function BrandMark() {
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="grid gap-1 border-b border-slate-100 py-2.5 last:border-0 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-4">
-      <dt className="text-sm font-semibold text-slate-800">{label}</dt>
-      <dd className="min-w-0 break-words text-sm text-slate-700 sm:text-right">{value}</dd>
+    <div className="grid grid-cols-[minmax(90px,0.72fr)_minmax(0,1.28fr)] gap-3 border-b border-slate-100 py-2.5 last:border-0 sm:grid-cols-[minmax(120px,0.72fr)_minmax(0,1.28fr)] sm:gap-4">
+      <dt className="text-[13px] font-semibold leading-5 text-slate-800 sm:text-sm">{label}</dt>
+      <dd className="min-w-0 break-words text-right text-[13px] leading-5 text-slate-700 sm:text-sm">{value}</dd>
     </div>
   )
 }
@@ -111,7 +111,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
           <h1 className="text-2xl font-semibold text-foreground">{serviceLabel} receipt</h1>
           <p className="mt-1 text-sm text-muted-foreground">Keep this transaction record for your reference.</p>
         </div>
-        <Button type="button" onClick={handleDownload} disabled={isDownloading} className="w-full gap-2 sm:w-auto">
+        <Button type="button" onClick={handleDownload} disabled={isDownloading} className="min-h-11 w-full gap-2 sm:w-auto">
           {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {isDownloading ? "Preparing PDF" : "Download PDF"}
         </Button>
@@ -150,7 +150,7 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
                     {receipt.token}
                   </p>
                 </div>
-                <Button type="button" variant="outline" onClick={handleCopy} className="w-full shrink-0 gap-2 border-emerald-300 bg-white sm:w-auto">
+                <Button type="button" variant="outline" onClick={handleCopy} className="min-h-11 w-full shrink-0 gap-2 border-emerald-300 bg-white sm:w-auto">
                   {copyState === "copied" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   {copyState === "copied" ? "Token copied" : "Copy token"}
                 </Button>
@@ -159,21 +159,39 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
           </section>
         ) : null}
 
-        <div className="grid gap-7 px-5 py-6 sm:px-8 md:grid-cols-2">
-          <section>
-            <h2 className="text-base font-semibold text-slate-950">Purchase details</h2>
-            <dl className="mt-2">
-              <DetailRow label="Service" value={transaction.description} />
-              <DetailRow label="Recipient" value={transaction.recipient} />
-              {receipt.customerName ? <DetailRow label="Customer name" value={receipt.customerName} /> : null}
-              {receipt.customerAddress ? <DetailRow label="Service address" value={receipt.customerAddress} /> : null}
-              {receipt.meterNumber ? <DetailRow label="Meter number" value={receipt.meterNumber} /> : null}
-              {receipt.meterType ? <DetailRow label="Meter type" value={receipt.meterType} /> : null}
-              {receipt.units ? <DetailRow label="Units" value={receipt.units} /> : null}
-            </dl>
-          </section>
+        <div className="grid min-[720px]:grid-cols-2">
+          <div className="px-5 py-6 sm:px-8 min-[720px]:border-r min-[720px]:border-slate-200">
+            <section>
+              <h2 className="text-base font-semibold text-slate-950">Purchase details</h2>
+              <dl className="mt-2">
+                <DetailRow label="Service" value={transaction.description} />
+                <DetailRow label="Recipient" value={transaction.recipient} />
+                {receipt.customerName ? <DetailRow label="Customer name" value={receipt.customerName} /> : null}
+                {receipt.customerAddress ? <DetailRow label="Service address" value={receipt.customerAddress} /> : null}
+                {receipt.meterNumber ? <DetailRow label="Meter number" value={receipt.meterNumber} /> : null}
+                {receipt.meterType ? <DetailRow label="Meter type" value={receipt.meterType} /> : null}
+                {receipt.units ? <DetailRow label="Units" value={receipt.units} /> : null}
+              </dl>
+            </section>
 
-          <section>
+            <section className="mt-7 border-t border-slate-200 pt-6">
+              <h2 className="text-base font-semibold text-slate-950">Payment summary</h2>
+              <dl className="mt-2">
+                <DetailRow label="Cost of utility" value={money.format(receipt.subtotal ?? transaction.amount)} />
+                {receipt.vat !== undefined ? <DetailRow label="VAT" value={money.format(receipt.vat)} /> : null}
+                {receipt.debt !== undefined ? <DetailRow label="Debt" value={money.format(receipt.debt)} /> : null}
+                {receipt.remainingDebt !== undefined ? <DetailRow label="Remaining debt" value={money.format(receipt.remainingDebt)} /> : null}
+                <DetailRow label="Service charge" value={money.format(receipt.serviceCharge ?? 0)} />
+                <DetailRow label="Discount" value={money.format(receipt.discount ?? 0)} />
+                <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-4">
+                  <dt className="font-semibold text-slate-950">Total paid</dt>
+                  <dd className="text-lg font-bold text-emerald-700 sm:text-xl">{money.format(transaction.amount)}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <section className="border-t border-slate-200 px-5 py-6 sm:px-8 min-[720px]:border-t-0">
             <h2 className="text-base font-semibold text-slate-950">Transaction details</h2>
             <dl className="mt-2">
               <DetailRow label="Date" value={dateLabel} />
@@ -185,21 +203,6 @@ export function TransactionReceipt({ transaction }: TransactionReceiptProps) {
             </dl>
           </section>
         </div>
-
-        <section className="border-t border-slate-200 bg-slate-50 px-5 py-5 sm:px-8">
-          <dl className="ml-auto max-w-sm">
-            <DetailRow label="Cost of utility" value={money.format(receipt.subtotal ?? transaction.amount)} />
-            {receipt.vat !== undefined ? <DetailRow label="VAT" value={money.format(receipt.vat)} /> : null}
-            {receipt.debt !== undefined ? <DetailRow label="Debt" value={money.format(receipt.debt)} /> : null}
-            {receipt.remainingDebt !== undefined ? <DetailRow label="Remaining debt" value={money.format(receipt.remainingDebt)} /> : null}
-            <DetailRow label="Service charge" value={money.format(receipt.serviceCharge ?? 0)} />
-            <DetailRow label="Discount" value={money.format(receipt.discount ?? 0)} />
-            <div className="flex items-center justify-between gap-4 pt-4">
-              <dt className="font-semibold text-slate-950">Total paid</dt>
-              <dd className="text-xl font-bold text-emerald-700">{money.format(transaction.amount)}</dd>
-            </div>
-          </dl>
-        </section>
 
         <footer className="border-t border-slate-200 px-5 py-4 text-center text-xs leading-5 text-slate-500 sm:px-8">
           Purchased via {receipt.purchasedVia}.

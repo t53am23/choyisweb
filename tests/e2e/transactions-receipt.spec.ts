@@ -39,4 +39,41 @@ test.describe("Transaction receipts", () => {
 
     expect(hasHorizontalOverflow).toBe(false)
   })
+
+  test("keeps purchase, payment and transaction details in one responsive flow", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto("/dashboard/transactions/TXN003")
+
+    const purchaseHeading = page.getByRole("heading", { name: "Purchase details" })
+    const paymentHeading = page.getByRole("heading", { name: "Payment summary" })
+    const transactionHeading = page.getByRole("heading", { name: "Transaction details" })
+
+    await expect(paymentHeading).toBeVisible()
+
+    const mobilePurchase = await purchaseHeading.boundingBox()
+    const mobilePayment = await paymentHeading.boundingBox()
+    const mobileTransaction = await transactionHeading.boundingBox()
+
+    expect(mobilePurchase).not.toBeNull()
+    expect(mobilePayment).not.toBeNull()
+    expect(mobileTransaction).not.toBeNull()
+    expect(Math.abs(mobilePurchase!.x - mobilePayment!.x)).toBeLessThan(4)
+    expect(Math.abs(mobilePurchase!.x - mobileTransaction!.x)).toBeLessThan(4)
+    expect(mobilePayment!.y).toBeGreaterThan(mobilePurchase!.y)
+    expect(mobileTransaction!.y).toBeGreaterThan(mobilePayment!.y)
+
+    await page.setViewportSize({ width: 900, height: 900 })
+
+    const desktopPurchase = await purchaseHeading.boundingBox()
+    const desktopPayment = await paymentHeading.boundingBox()
+    const desktopTransaction = await transactionHeading.boundingBox()
+
+    expect(desktopPurchase).not.toBeNull()
+    expect(desktopPayment).not.toBeNull()
+    expect(desktopTransaction).not.toBeNull()
+    expect(Math.abs(desktopPurchase!.x - desktopPayment!.x)).toBeLessThan(4)
+    expect(desktopTransaction!.x).toBeGreaterThan(desktopPurchase!.x)
+    expect(Math.abs(desktopPurchase!.y - desktopTransaction!.y)).toBeLessThan(4)
+    expect(desktopPayment!.y).toBeGreaterThan(desktopPurchase!.y)
+  })
 })
