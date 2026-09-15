@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { transactions } from "@/lib/transactions"
 import { 
   Search, 
   Filter, 
@@ -17,83 +19,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  ChevronDown,
-  Receipt,
-  Calendar
+  ChevronDown
 } from "lucide-react"
-
-const transactions = [
-  {
-    id: "TXN001",
-    type: "airtime",
-    description: "MTN Airtime Top-up",
-    recipient: "080 1234 5678",
-    amount: 1000,
-    status: "completed",
-    date: "2026-06-01T14:30:00",
-    reference: "CHY-AIR-001234",
-  },
-  {
-    id: "TXN002",
-    type: "data",
-    description: "MTN 5GB Data Bundle",
-    recipient: "080 1234 5678",
-    amount: 2500,
-    status: "completed",
-    date: "2026-06-01T12:15:00",
-    reference: "CHY-DAT-001235",
-  },
-  {
-    id: "TXN003",
-    type: "electricity",
-    description: "EKEDC Prepaid",
-    recipient: "45678901234",
-    amount: 10000,
-    status: "completed",
-    date: "2026-05-31T09:45:00",
-    reference: "CHY-ELC-001236",
-  },
-  {
-    id: "TXN004",
-    type: "tv",
-    description: "DStv Compact",
-    recipient: "1234567890",
-    amount: 15700,
-    status: "completed",
-    date: "2026-05-30T16:20:00",
-    reference: "CHY-TV-001237",
-  },
-  {
-    id: "TXN005",
-    type: "internet",
-    description: "Spectranet 25GB",
-    recipient: "SPT-12345",
-    amount: 10000,
-    status: "pending",
-    date: "2026-05-30T11:00:00",
-    reference: "CHY-INT-001238",
-  },
-  {
-    id: "TXN006",
-    type: "ai",
-    description: "AI Credits Top-up",
-    recipient: "user@email.com",
-    amount: 5000,
-    status: "completed",
-    date: "2026-05-29T08:30:00",
-    reference: "CHY-AI-001239",
-  },
-  {
-    id: "TXN007",
-    type: "airtime",
-    description: "Glo Airtime Top-up",
-    recipient: "090 8765 4321",
-    amount: 500,
-    status: "failed",
-    date: "2026-05-28T19:15:00",
-    reference: "CHY-AIR-001240",
-  },
-]
 
 const typeIcons: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   airtime: { icon: Smartphone, color: "text-emerald-500", bg: "bg-emerald-50" },
@@ -114,7 +41,6 @@ export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [filterType, setFilterType] = React.useState<string>("all")
   const [showFilterDropdown, setShowFilterDropdown] = React.useState(false)
-  const [selectedTransaction, setSelectedTransaction] = React.useState<typeof transactions[0] | null>(null)
 
   const filteredTransactions = transactions.filter((tx) => {
     const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,17 +49,6 @@ export default function TransactionsPage() {
     const matchesType = filterType === "all" || tx.type === filterType
     return matchesSearch && matchesType
   })
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
 
   return (
     <div className="space-y-6">
@@ -229,10 +144,9 @@ export default function TransactionsPage() {
               const status = statusConfig[tx.status]
 
               return (
-                <button
+                <Link
                   key={tx.id}
-                  type="button"
-                  onClick={() => setSelectedTransaction(tx)}
+                  href={`/dashboard/transactions/${tx.id}`}
                   className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors text-left"
                 >
                   <div className="flex items-center gap-4">
@@ -251,71 +165,13 @@ export default function TransactionsPage() {
                       {status.label}
                     </div>
                   </div>
-                </button>
+                </Link>
               )
             })}
           </div>
         </CardContent>
       </Card>
 
-      {/* Receipt Modal */}
-      {selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center border-b">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-                <Receipt className="h-6 w-6 text-emerald-600" />
-              </div>
-              <CardTitle>Transaction Receipt</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Reference</span>
-                <span className="font-medium">{selectedTransaction.reference}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Type</span>
-                <span className="font-medium capitalize">{selectedTransaction.type}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Description</span>
-                <span className="font-medium">{selectedTransaction.description}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Recipient</span>
-                <span className="font-medium">{selectedTransaction.recipient}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Amount</span>
-                <span className="font-semibold text-lg">₦{selectedTransaction.amount.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-dashed">
-                <span className="text-muted-foreground">Status</span>
-                <span className={`font-medium ${statusConfig[selectedTransaction.status].color}`}>
-                  {statusConfig[selectedTransaction.status].label}
-                </span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Date</span>
-                <span className="font-medium flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(selectedTransaction.date)}
-                </span>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button variant="outline" className="flex-1" onClick={() => setSelectedTransaction(null)}>
-                  Close
-                </Button>
-                <Button className="flex-1 gap-2">
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }
