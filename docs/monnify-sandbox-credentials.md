@@ -13,3 +13,14 @@ Primary sources:
 - [Monnify Checkout Page](https://developers.monnify.com/docs/collections/one-time-payments/checkout-page)
 - [Monnify Going Live](https://developers.monnify.com/docs/live)
 - [Monnify Sandbox Test Cards](https://developers.monnify.com/docs/test-cards)
+
+## VTpass environment boundary
+
+- VTpass documents separate live and Sandbox profiles, credentials, and base URLs.
+- The existing live VTpass credentials may remain the production vending credentials, but they must not be used to perform a real vend after a Monnify Sandbox payment.
+- A safe Sandbox end-to-end vend requires credentials created on the VTpass Sandbox profile. Until then, the live integration can be used only for non-vending catalogue/availability checks during this rollout.
+
+Primary sources:
+
+- [VTpass authentication](https://vtpass.com/documentation/authentication/)
+- [VTpass API environments](https://vtpass.com/documentation/integrating-api/)
