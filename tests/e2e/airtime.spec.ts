@@ -26,13 +26,13 @@ test.describe("Airtime checkout", () => {
     await page.getByLabel("Phone Number", { exact: true }).fill("08000000000")
     await page.getByRole("button", { name: "₦100", exact: true }).click()
 
-    const popupPromise = page.waitForEvent("popup")
+    let popupOpened = false
+    page.once("popup", () => { popupOpened = true })
     await page.getByRole("button", { name: "Buy Airtime", exact: true }).click()
-    const popup = await popupPromise
 
     await expect(
       page.getByRole("alert").filter({ hasText: "A secure login is required before payment" }),
     ).toBeVisible()
-    await expect.poll(() => popup.isClosed()).toBe(true)
+    expect(popupOpened).toBe(false)
   })
 })

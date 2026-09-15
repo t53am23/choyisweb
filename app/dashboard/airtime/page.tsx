@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, Loader2, Smartphone } from "lucide-react"
 import {
   confirmUtilityCheckout,
+  openUtilityCheckout,
   startUtilityCheckout,
   UtilityCheckoutError,
   type UtilityCheckoutResult,
@@ -60,7 +61,7 @@ export default function AirtimePage() {
     idempotencyKey.current = null
   }
 
-  const confirmUntilComplete = async (transactionId: string, paymentWindow?: Window | null) => {
+  const confirmUntilComplete = async (transactionId: string) => {
     setStage("confirming")
     let lastError: unknown = null
 
@@ -71,7 +72,6 @@ export default function AirtimePage() {
         const result = await confirmUtilityCheckout(transactionId)
         if (result.status === "delivered") {
           completeTransaction(result)
-          paymentWindow?.close()
           return
         }
         if (result.status === "failed") {
@@ -82,8 +82,6 @@ export default function AirtimePage() {
         const retryable = caught instanceof UtilityCheckoutError && caught.retryable
         if (!retryable) throw caught
       }
-
-      if (paymentWindow?.closed) break
     }
 
     setStage("awaiting_payment")
@@ -101,17 +99,6 @@ export default function AirtimePage() {
     setError("")
     setReceipt(null)
 
-    const paymentWindow = window.open(
-      "",
-      "choyis-paystack",
-      "popup=yes,width=520,height=760,resizable=yes,scrollbars=yes",
-    )
-
-    if (!paymentWindow) {
-      setError("Allow payment pop-ups for this site, then try again.")
-      return
-    }
-
     try {
       setStage("initializing")
       idempotencyKey.current ||= crypto.randomUUID()
@@ -123,12 +110,25 @@ export default function AirtimePage() {
         idempotencyKey: idempotencyKey.current,
       })
 
-      rememberPendingTransaction(checkout.transactionId)
+      rememberPendingTransaction(checkout.operationReference)
       setStage("awaiting_payment")
-      paymentWindow.location.replace(checkout.authorizationUrl)
-      await confirmUntilComplete(checkout.transactionId, paymentWindow)
+      const outcome = await openUtilityCheckout(checkout)
+      if (outcome === "redirected") return
+      if (outcome === "closed") {
+        const result = await confirmUtilityCheckout(checkout.operationReference)
+        if (result.status === "delivered") {
+          completeTransaction(result)
+          return
+        }
+        setStage("awaiting_payment")
+        throw new UtilityCheckoutError(
+          "Payment was not confirmed. Use Check payment status if you completed a transfer.",
+          "PAYMENT_PENDING",
+          true,
+        )
+      }
+      await confirmUntilComplete(checkout.operationReference)
     } catch (caught) {
-      paymentWindow.close()
       setError(checkoutMessage(caught))
       setStage("idle")
     }

@@ -1,0 +1,11 @@
+[functions.topup-vending-router]
+verify_jwt = false
+
+[functions.topup-payment-router]
+verify_jwt = false
+
+[functions.topup-payment-webhook]
+verify_jwt = false
+
+[functions.topup-vending-worker]
+verify_jwt = false
