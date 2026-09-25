@@ -27,6 +27,7 @@ import {
   Receipt,
   Gift,
   ChevronDown,
+  BarChart3,
 } from "lucide-react"
 
 const navLinks = [
@@ -41,6 +42,7 @@ const navLinks = [
 
 const bottomLinks = [
   { label: "Transactions", href: "/dashboard/transactions", icon: History },
+  { label: "Insights", href: "/dashboard/insights", icon: BarChart3 },
   { label: "Teams", href: "/dashboard/teams", icon: Users },
   { label: "Referrals", href: "/dashboard/referrals", icon: Gift },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
