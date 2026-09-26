@@ -9,7 +9,9 @@ import { internetProviders } from "@/lib/utilities/catalog"
 import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
 import type { UtilityVariation } from "@/lib/utilities/vtpass"
 
-export default function InternetPage() {
+type InternetPageProps = { embedded?: boolean }
+
+export default function InternetPage({ embedded = false }: InternetPageProps = {}) {
   const [selectedProvider, setSelectedProvider] = React.useState(internetProviders[0])
   const [selectedPlan, setSelectedPlan] = React.useState<UtilityVariation | null>(null)
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
@@ -18,14 +20,14 @@ export default function InternetPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      {!embedded && <div>
         <h1 className="text-2xl font-semibold text-foreground">Internet</h1>
         <p className="text-muted-foreground">Buy internet plans from trusted providers</p>
-      </div>
+      </div>}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className={embedded ? "grid gap-6" : "grid gap-6 lg:grid-cols-3"}>
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={embedded ? "space-y-6" : "lg:col-span-2 space-y-6"}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -135,7 +137,7 @@ export default function InternetPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="space-y-4">
+        {!embedded && <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -145,7 +147,7 @@ export default function InternetPage() {
             </CardHeader>
             <CardContent><p className="text-sm text-muted-foreground">No recent purchases yet. Successful live transactions will appear here after checkout is connected.</p></CardContent>
           </Card>
-        </div>
+        </div>}
       </div>
     </div>
   )

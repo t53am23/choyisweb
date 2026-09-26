@@ -1,89 +1,159 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowRight, BarChart3, CheckCircle2, Clock3, Globe, Mic, Send, Sparkles, Smartphone, Tv, Wifi, Zap } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import AirtimePage from "@/app/dashboard/airtime/page"
+import DataPage from "@/app/dashboard/data/page"
+import ElectricityPage from "@/app/dashboard/electricity/page"
+import InternetPage from "@/app/dashboard/internet/page"
+import TVPage from "@/app/dashboard/tv/page"
+import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
+import type { UtilityVariation } from "@/lib/utilities/vtpass"
+import {
+  ArrowRight, Globe, GraduationCap, Loader2, Mic, RefreshCw,
+  Send, Sparkles, Smartphone, Tv, Wifi, Zap,
+} from "lucide-react"
 
-const quickServices = [
-  { icon: Smartphone, label: "Airtime", href: "/dashboard/airtime", color: "var(--service-airtime)", bg: "var(--service-airtime-bg)" },
-  { icon: Globe, label: "Data", href: "/dashboard/data", color: "var(--service-data)", bg: "var(--service-data-bg)" },
-  { icon: Zap, label: "Electricity", href: "/dashboard/electricity", color: "var(--service-electricity)", bg: "var(--service-electricity-bg)" },
-  { icon: Wifi, label: "Internet", href: "/dashboard/internet", color: "var(--service-internet)", bg: "var(--service-internet-bg)" },
-  { icon: Tv, label: "TV", href: "/dashboard/tv", color: "var(--service-tv)", bg: "var(--service-tv-bg)" },
+type ServiceId = "airtime" | "data" | "electricity" | "internet" | "tv" | "education" | "international"
+type Draft = { service: ServiceId; provider?: string; identifier?: string; amount?: number }
+
+const services = [
+  { id: "airtime" as const, label: "Airtime", icon: Smartphone, color: "var(--service-airtime)", bg: "var(--service-airtime-bg)" },
+  { id: "data" as const, label: "Data", icon: Globe, color: "var(--service-data)", bg: "var(--service-data-bg)" },
+  { id: "electricity" as const, label: "Electricity", icon: Zap, color: "var(--service-electricity)", bg: "var(--service-electricity-bg)" },
+  { id: "internet" as const, label: "Internet", icon: Wifi, color: "var(--service-internet)", bg: "var(--service-internet-bg)" },
+  { id: "tv" as const, label: "TV", icon: Tv, color: "var(--service-tv)", bg: "var(--service-tv-bg)" },
+  { id: "education" as const, label: "Education", icon: GraduationCap, color: "#db2777", bg: "#fce7f3" },
+  { id: "international" as const, label: "International Airtime", icon: Globe, color: "#7c3aed", bg: "#ede9fe" },
 ]
 
 const predictedRecharges = [
-  { service: "Data", provider: "MTN", account: "0803 ••• 1482", detail: "5 GB monthly", amount: "₦1,500", days: 3, href: "/dashboard/data" },
-  { service: "Airtime", provider: "Glo", account: "0805 ••• 9016", detail: "Usual recharge", amount: "₦500", days: 6, href: "/dashboard/airtime" },
-  { service: "TV", provider: "GOtv", account: "IUC ••• 8041", detail: "Jolli package", amount: "₦3,950", days: 11, href: "/dashboard/tv" },
+  { service: "data" as const, title: "MTN Data", due: "About 3 days", action: "Buy again", provider: "mtn-data", identifier: "08031231482" },
+  { service: "electricity" as const, title: "AEDC Electricity", due: "About 6 days", action: "Pay again", provider: "abuja-electric", identifier: "04198812754", amount: 5000 },
+  { service: "tv" as const, title: "GOtv", due: "About 11 days", action: "Buy again", provider: "gotv", identifier: "1234567890" },
 ]
 
-const recentTransactions = [
-  { type: "Data", provider: "MTN · 0803 ••• 1482", amount: "₦1,500", time: "2 min ago" },
-  { type: "Airtime", provider: "Glo · 0805 ••• 9016", amount: "₦500", time: "1 hour ago" },
-  { type: "Electricity", provider: "AEDC · Meter ••• 2754", amount: "₦5,000", time: "Yesterday" },
-]
+function detectService(prompt: string): ServiceId {
+  const value = prompt.toLowerCase()
+  if (/electric|aedc|meter|disco/.test(value)) return "electricity"
+  if (/data|bundle|gb|mb/.test(value)) return "data"
+  if (/gotv|dstv|startimes|tv|cable/.test(value)) return "tv"
+  if (/smile|spectranet|internet/.test(value)) return "internet"
+  if (/waec|education|result checker/.test(value)) return "education"
+  if (/international|foreign|ghana|cameroon/.test(value)) return "international"
+  return "airtime"
+}
+
+function extractDraft(prompt: string): Draft {
+  const service = detectService(prompt)
+  const identifier = prompt.match(/\b0\d{10}\b/)?.[0]
+  const amountMatch = prompt.replace(/,/g, "").match(/(?:₦|ngn\s*)?(\d{2,6})/i)
+  const amount = amountMatch ? Number(amountMatch[1]) : undefined
+  const provider = /mtn/i.test(prompt) ? (service === "data" ? "mtn-data" : "mtn") : undefined
+  return { service, provider, identifier, amount }
+}
+
+function EducationPanel() {
+  const [provider, setProvider] = React.useState("waec")
+  const [selectedPlan, setSelectedPlan] = React.useState<UtilityVariation | null>(null)
+  const [phone, setPhone] = React.useState("")
+  const { variations, loading, error, retry } = useUtilityVariations(provider)
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-lg">Education payment</CardTitle><CardDescription>Products and prices are loaded from the live VTpass catalogue.</CardDescription></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2"><Label htmlFor="education-product">Product</Label><select id="education-product" value={provider} onChange={(event) => { setProvider(event.target.value); setSelectedPlan(null) }} className="h-11 w-full rounded-lg border bg-background px-3 text-sm"><option value="waec">WAEC Result Checker PIN</option><option value="waec-registration">WAEC Registration PIN</option></select></div>
+        <div className="space-y-2"><Label htmlFor="education-phone">Phone number</Label><Input id="education-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0801 234 5678" /></div>
+        <div className="space-y-2"><Label>Available products</Label>
+          {loading && <p role="status" className="flex items-center gap-2 rounded-lg border p-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading live products…</p>}
+          {!loading && error && <div role="alert" className="rounded-lg border border-destructive/30 p-4 text-sm text-destructive">{error}<Button variant="outline" size="sm" className="mt-3 block" onClick={retry}><RefreshCw /> Retry</Button></div>}
+          {!loading && !error && <div className="grid gap-2 sm:grid-cols-2">{variations.map((plan) => <button key={plan.id} type="button" onClick={() => setSelectedPlan(plan)} className={`rounded-lg border p-3 text-left ${selectedPlan?.id === plan.id ? "border-primary bg-primary/5" : "hover:border-primary/30"}`}><span className="block text-sm font-medium">{plan.name}</span><span className="mt-1 block text-sm text-primary">₦{plan.amount.toLocaleString()}</span></button>)}</div>}
+        </div>
+        <Button className="w-full" disabled>Payment connection follows the catalogue batch</Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function InternationalAirtimePanel() {
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Globe className="h-5 w-5 text-violet-600" />International Airtime</CardTitle><CardDescription>VTpass supplies countries, product types, operators and denominations dynamically.</CardDescription></CardHeader>
+      <CardContent>
+        <div className="rounded-xl border border-dashed p-5">
+          <p className="text-sm font-medium">Secure catalogue connection required</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">The existing web proxy does not yet expose VTpass’s international country and operator sequence. It must remain server-side so API credentials are never placed in the browser. No provider or denomination has been hardcoded here.</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function DashboardPage() {
+  const [selectedService, setSelectedService] = React.useState<ServiceId>("airtime")
+  const [draft, setDraft] = React.useState<Draft>({ service: "airtime" })
   const [prompt, setPrompt] = React.useState("")
-  const [message, setMessage] = React.useState("")
+  const workspaceRef = React.useRef<HTMLElement>(null)
+
+  function openWorkspace(nextDraft: Draft) {
+    setDraft(nextDraft)
+    setSelectedService(nextDraft.service)
+    window.setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0)
+  }
 
   function prepareRequest(event: React.FormEvent) {
     event.preventDefault()
-    setMessage(prompt.trim() ? "Request captured as a preview. No payment has started." : "Tell Choyis what you want to buy first.")
+    if (!prompt.trim()) return
+    openWorkspace(extractDraft(prompt))
   }
+
+  const workspace = {
+    airtime: <AirtimePage key={`airtime-${draft.identifier}-${draft.amount}`} embedded initialPhone={draft.identifier} initialProvider={draft.provider} initialAmount={draft.amount} />,
+    data: <DataPage key={`data-${draft.identifier}-${draft.provider}`} embedded initialPhone={draft.identifier} initialProvider={draft.provider} />,
+    electricity: <ElectricityPage key={`electricity-${draft.identifier}-${draft.amount}`} embedded initialMeter={draft.identifier} initialProvider={draft.provider} initialAmount={draft.amount} />,
+    internet: <InternetPage embedded />,
+    tv: <TVPage key={`tv-${draft.identifier}-${draft.provider}`} embedded initialAccount={draft.identifier} initialProvider={draft.provider} />,
+    education: <EducationPanel />,
+    international: <InternationalAirtimePanel />,
+  }[selectedService]
 
   return (
     <div className="space-y-7">
-      <section className="overflow-hidden rounded-2xl border border-primary/15 bg-[linear-gradient(135deg,var(--card)_0%,var(--service-ai-bg)_130%)] p-5 shadow-sm sm:p-7">
-        <div className="max-w-3xl">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/10 bg-background/80 px-3 py-1 text-xs font-medium text-primary"><Sparkles className="h-3.5 w-3.5" /> Choyis AI preview</div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">What would you like to top up?</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Type it naturally. Choyis will prepare the purchase for you to review before any payment begins.</p>
-          <form onSubmit={prepareRequest} className="mt-5 flex items-center gap-2 rounded-xl border bg-background p-2 shadow-sm">
-            <label htmlFor="choyis-request" className="sr-only">Ask Choyis to prepare a top up</label>
-            <Sparkles className="ml-2 hidden h-5 w-5 text-primary sm:block" aria-hidden="true" />
-            <input id="choyis-request" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Buy ₦1,000 MTN airtime for 0803…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground" />
-            <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label="Use voice to ask Choyis" onClick={() => setMessage("Voice purchasing is coming after secure AI actions are connected.")}><Mic className="h-5 w-5" /></Button>
-            <Button type="submit" size="icon" className="h-11 w-11" aria-label="Prepare top up"><Send className="h-4 w-4" /></Button>
-          </form>
-          <p className="mt-2 min-h-5 text-xs text-muted-foreground" aria-live="polite">{message || "Try: “Buy my usual MTN data” or “Recharge AEDC with ₦5,000”."}</p>
-        </div>
+      <section className="rounded-2xl border border-primary/15 bg-[linear-gradient(135deg,var(--card)_0%,var(--service-ai-bg)_130%)] p-4 shadow-sm sm:p-5">
+        <form onSubmit={prepareRequest} className="flex items-center gap-2 rounded-xl border bg-background p-2">
+          <Sparkles className="ml-2 hidden h-5 w-5 text-primary sm:block" aria-hidden="true" />
+          <label htmlFor="choyis-request" className="sr-only">Ask Choyis to prepare a top up</label>
+          <input id="choyis-request" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask Choyis to buy airtime, data or pay a bill…" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground" />
+          <Button type="button" variant="ghost" size="icon" className="h-11 w-11" aria-label="Use voice to ask Choyis"><Mic className="h-5 w-5" /></Button>
+          <Button type="submit" size="icon" className="h-11 w-11" aria-label="Prepare transaction"><Send className="h-4 w-4" /></Button>
+        </form>
+        <p className="mt-2 px-1 text-xs text-muted-foreground">Choyis prepares the same form below for you to review. Payment never starts without your confirmation.</p>
       </section>
 
-      <section aria-labelledby="services-title">
-        <div className="mb-3"><h2 id="services-title" className="text-lg font-semibold">Top up directly</h2><p className="text-sm text-muted-foreground">Choose a service when you already know what you need.</p></div>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3">
-          {quickServices.map((service) => (
-            <Link key={service.label} href={service.href} className="group flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border bg-card p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: service.bg }}><service.icon className="h-5 w-5" style={{ color: service.color }} /></span>
-              <span className="text-xs font-medium sm:text-sm">{service.label}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section aria-labelledby="repeat-title">
-        <div className="mb-3 flex items-end justify-between gap-3"><div><h2 id="repeat-title" className="text-lg font-semibold">Likely due soon</h2><p className="text-sm text-muted-foreground">Estimated from your previous purchase rhythm.</p></div><Link href="/dashboard/insights" className="hidden items-center gap-1 text-sm font-medium text-primary hover:underline sm:flex">View insights <ArrowRight className="h-4 w-4" /></Link></div>
-        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+      <section aria-labelledby="due-title">
+        <div className="mb-3"><h1 id="due-title" className="text-lg font-semibold">Likely due soon</h1><p className="text-sm text-muted-foreground">Estimated from your previous purchase rhythm.</p></div>
+        <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
           {predictedRecharges.map((item) => (
-            <article key={item.account} className="min-w-[82%] snap-start rounded-xl border bg-card p-4 shadow-sm sm:min-w-[290px]">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{item.provider} {item.service}</p><p className="mt-0.5 text-xs text-muted-foreground">{item.account}</p></div><span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">Estimated</span></div>
-              <p className="mt-5 text-2xl font-semibold tracking-tight">About {item.days} days</p><p className="mt-1 text-xs text-muted-foreground">{item.detail} · {item.amount}</p>
-              <Button asChild variant="outline" className="mt-4 w-full"><Link href={item.href}>Buy again <ArrowRight className="h-4 w-4" /></Link></Button>
+            <article key={item.title} className="min-w-[78%] snap-start rounded-xl border bg-card p-4 shadow-sm sm:min-w-[260px]">
+              <div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold">{item.title}</p><span className="rounded-full bg-secondary px-2 py-1 text-[11px] text-muted-foreground">Estimated</span></div>
+              <p className="mt-4 text-xl font-semibold">{item.due}</p>
+              <Button variant="ghost" className="mt-2 h-9 px-0 text-primary hover:bg-transparent" onClick={() => openWorkspace({ service: item.service, provider: item.provider, identifier: item.identifier, amount: item.amount })}>{item.action} <ArrowRight /></Button>
             </article>
           ))}
         </div>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_300px]">
-        <Card className="gap-4"><CardHeader className="flex-row items-center justify-between gap-4"><div><CardTitle className="text-lg">Recent activity</CardTitle><CardDescription>Latest completed top ups</CardDescription></div><Button asChild variant="ghost" size="sm"><Link href="/dashboard/transactions">View all <ArrowRight /></Link></Button></CardHeader>
-          <CardContent className="space-y-1">{recentTransactions.map((tx) => <div key={`${tx.type}-${tx.time}`} className="flex items-center justify-between gap-3 border-b py-3 last:border-0"><div className="flex min-w-0 items-center gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--service-airtime-bg)]"><CheckCircle2 className="h-4 w-4 text-[var(--service-airtime)]" /></span><div className="min-w-0"><p className="text-sm font-medium">{tx.type}</p><p className="truncate text-xs text-muted-foreground">{tx.provider}</p></div></div><div className="shrink-0 text-right"><p className="text-sm font-semibold">{tx.amount}</p><p className="flex items-center justify-end gap-1 text-xs text-muted-foreground"><Clock3 className="h-3 w-3" />{tx.time}</p></div></div>)}</CardContent>
-        </Card>
-        <Card className="gap-4 border-primary/10 bg-secondary/30"><CardHeader><span className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"><BarChart3 className="h-5 w-5 text-primary" /></span><CardTitle className="text-lg">Your spending, clearly</CardTitle><CardDescription>See patterns by service, account and month without a spreadsheet.</CardDescription></CardHeader><CardContent><Button asChild className="w-full"><Link href="/dashboard/insights">Open insights <ArrowRight /></Link></Button><p className="mt-3 text-center text-[11px] text-muted-foreground">Preview data until your account history is connected.</p></CardContent></Card>
-      </div>
+      <section ref={workspaceRef} aria-labelledby="services-title" className="scroll-mt-20">
+        <div className="mb-3"><h2 id="services-title" className="text-lg font-semibold">Top up directly</h2><p className="text-sm text-muted-foreground">Choose a service. The transaction stays on this page.</p></div>
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0" role="tablist" aria-label="Top up services">
+          {services.map((service) => <button key={service.id} type="button" role="tab" aria-selected={selectedService === service.id} onClick={() => { setSelectedService(service.id); setDraft({ service: service.id }) }} className={`flex min-h-20 min-w-[108px] flex-col items-center justify-center gap-2 rounded-xl border px-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedService === service.id ? "border-primary bg-primary/5 shadow-sm" : "bg-card hover:border-primary/30"}`}><span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: service.bg }}><service.icon className="h-4.5 w-4.5" style={{ color: service.color }} /></span><span className="text-xs font-medium">{service.label}</span></button>)}
+        </div>
+        <div role="tabpanel" aria-label={`${services.find((service) => service.id === selectedService)?.label} transaction`} className="mt-2">{workspace}</div>
+      </section>
     </div>
   )
 }

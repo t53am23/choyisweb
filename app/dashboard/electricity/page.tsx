@@ -11,12 +11,14 @@ import { verifyUtilityCustomer } from "@/lib/utilities/vtpass"
 
 type MeterType = "prepaid" | "postpaid"
 
-export default function ElectricityPage() {
-  const [selectedDisco, setSelectedDisco] = React.useState(electricityProviders[0])
+type ElectricityPageProps = { embedded?: boolean; initialMeter?: string; initialProvider?: string; initialAmount?: number }
+
+export default function ElectricityPage({ embedded = false, initialMeter = "", initialProvider = "", initialAmount }: ElectricityPageProps = {}) {
+  const [selectedDisco, setSelectedDisco] = React.useState(electricityProviders.find((provider) => provider.serviceId === initialProvider) ?? electricityProviders[0])
   const [showDiscoDropdown, setShowDiscoDropdown] = React.useState(false)
-  const [meterNumber, setMeterNumber] = React.useState("")
+  const [meterNumber, setMeterNumber] = React.useState(initialMeter)
   const [meterType, setMeterType] = React.useState<MeterType>("prepaid")
-  const [amount, setAmount] = React.useState("")
+  const [amount, setAmount] = React.useState(initialAmount ? String(initialAmount) : "")
   const [meterVerified, setMeterVerified] = React.useState(false)
   const [customerName, setCustomerName] = React.useState("")
   const [customerAddress, setCustomerAddress] = React.useState("")
@@ -75,18 +77,17 @@ export default function ElectricityPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
+      {!embedded && <div>
         <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
           <Zap className="h-6 w-6 text-[var(--service-electricity)]" />
           Pay Electricity
         </h1>
         <p className="text-sm text-muted-foreground">Purchase electricity tokens for prepaid meters</p>
-      </div>
+      </div>}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className={embedded ? "grid gap-6" : "grid gap-6 lg:grid-cols-3"}>
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={embedded ? "space-y-4" : "lg:col-span-2 space-y-4"}>
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Electricity Token</CardTitle>
@@ -273,7 +274,7 @@ export default function ElectricityPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        {!embedded && <div className="space-y-4">
           {/* Recent Meters */}
           <Card>
             <CardHeader className="pb-2">
@@ -306,7 +307,7 @@ export default function ElectricityPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div>}
       </div>
     </div>
   )

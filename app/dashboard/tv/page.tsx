@@ -9,11 +9,13 @@ import { tvProviders } from "@/lib/utilities/catalog"
 import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
 import { verifyUtilityCustomer, type UtilityVariation } from "@/lib/utilities/vtpass"
 
-export default function TVPage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(tvProviders[0])
+type TVPageProps = { embedded?: boolean; initialAccount?: string; initialProvider?: string }
+
+export default function TVPage({ embedded = false, initialAccount = "", initialProvider = "" }: TVPageProps = {}) {
+  const [selectedProvider, setSelectedProvider] = React.useState(tvProviders.find((provider) => provider.serviceId === initialProvider) ?? tvProviders[0])
   const [selectedPackage, setSelectedPackage] = React.useState<UtilityVariation | null>(null)
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
-  const [smartcardNumber, setSmartcardNumber] = React.useState("")
+  const [smartcardNumber, setSmartcardNumber] = React.useState(initialAccount)
   const [verifying, setVerifying] = React.useState(false)
   const [verifyError, setVerifyError] = React.useState("")
   const [verifiedCustomer, setVerifiedCustomer] = React.useState("")
@@ -56,14 +58,14 @@ export default function TVPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      {!embedded && <div>
         <h1 className="text-2xl font-semibold text-foreground">TV Subscriptions</h1>
         <p className="text-muted-foreground">Renew your TV subscription instantly</p>
-      </div>
+      </div>}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className={embedded ? "grid gap-6" : "grid gap-6 lg:grid-cols-3"}>
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className={embedded ? "space-y-6" : "lg:col-span-2 space-y-6"}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -187,7 +189,7 @@ export default function TVPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="space-y-4">
+        {!embedded && <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -197,7 +199,7 @@ export default function TVPage() {
             </CardHeader>
             <CardContent><p className="text-sm text-muted-foreground">No recent subscriptions yet. Successful live transactions will appear here after checkout is connected.</p></CardContent>
           </Card>
-        </div>
+        </div>}
       </div>
     </div>
   )

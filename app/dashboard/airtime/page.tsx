@@ -33,11 +33,13 @@ function checkoutMessage(error: unknown) {
   return "Airtime checkout could not be completed."
 }
 
-export default function AirtimePage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(airtimeProviders[0])
+type AirtimePageProps = { embedded?: boolean; initialPhone?: string; initialProvider?: string; initialAmount?: number }
+
+export default function AirtimePage({ embedded = false, initialPhone = "", initialProvider = "", initialAmount }: AirtimePageProps = {}) {
+  const [selectedProvider, setSelectedProvider] = React.useState(airtimeProviders.find((provider) => provider.serviceId === initialProvider) ?? airtimeProviders[0])
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
-  const [amount, setAmount] = React.useState("")
-  const [phoneNumber, setPhoneNumber] = React.useState("")
+  const [amount, setAmount] = React.useState(initialAmount ? String(initialAmount) : "")
+  const [phoneNumber, setPhoneNumber] = React.useState(initialPhone)
   const [stage, setStage] = React.useState<CheckoutStage>("idle")
   const [error, setError] = React.useState("")
   const [receipt, setReceipt] = React.useState<UtilityCheckoutResult | null>(null)
@@ -149,18 +151,17 @@ export default function AirtimePage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
+      {!embedded && <div>
         <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
           <Smartphone className="h-6 w-6 text-[var(--service-airtime)]" />
           Buy Airtime
         </h1>
         <p className="text-sm text-muted-foreground">Top up airtime instantly</p>
-      </div>
+      </div>}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className={embedded ? "grid gap-6" : "grid gap-6 lg:grid-cols-3"}>
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={embedded ? "space-y-4" : "lg:col-span-2 space-y-4"}>
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Airtime Top-Up</CardTitle>
@@ -324,7 +325,7 @@ export default function AirtimePage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        {!embedded && <div className="space-y-4">
           {/* Recent Numbers */}
           <Card>
             <CardHeader className="pb-2">
@@ -362,7 +363,7 @@ export default function AirtimePage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div>}
       </div>
     </div>
   )

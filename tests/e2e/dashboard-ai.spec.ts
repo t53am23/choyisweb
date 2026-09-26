@@ -1,16 +1,27 @@
 import { expect, test } from "@playwright/test"
 
 test.describe("AI-native dashboard preview", () => {
-  test("prepares a request without starting payment", async ({ page }) => {
+  test("routes AI requests into the same inline transaction form", async ({ page }) => {
     await page.goto("/dashboard")
 
-    await expect(page.getByRole("heading", { name: "What would you like to top up?" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Use voice to ask Choyis" })).toBeVisible()
-    await page.getByLabel("Ask Choyis to prepare a top up").fill("Buy my usual MTN data")
-    await page.getByRole("button", { name: "Prepare top up" }).click()
+    await page.getByLabel("Ask Choyis to prepare a top up").fill("Buy ₦101 MTN airtime for 08031234567")
+    await page.getByRole("button", { name: "Prepare transaction" }).click()
 
-    await expect(page.getByText("Request captured as a preview. No payment has started.")).toBeVisible()
-    await expect(page.getByText("Estimated", { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole("tab", { name: "Airtime", exact: true })).toHaveAttribute("aria-selected", "true")
+    await expect(page.getByLabel("Phone Number", { exact: true })).toHaveValue("08031234567")
+    await expect(page.getByLabel("Or Enter Amount", { exact: true })).toHaveValue("101")
+    await expect(page).toHaveURL(/\/dashboard$/)
+  })
+
+  test("reuses a due-soon draft in the inline electricity form", async ({ page }) => {
+    await page.goto("/dashboard")
+    await page.getByRole("button", { name: "Pay again" }).click()
+
+    await expect(page.getByRole("tab", { name: "Electricity", exact: true })).toHaveAttribute("aria-selected", "true")
+    await expect(page.getByLabel("Meter Number")).toHaveValue("04198812754")
+    await expect(page.getByLabel("Amount (₦)")).toHaveValue("5000")
+    await expect(page).toHaveURL(/\/dashboard$/)
   })
 
   test("shows responsive insights without horizontal page overflow", async ({ page }) => {

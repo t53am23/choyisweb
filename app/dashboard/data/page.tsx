@@ -16,11 +16,13 @@ import {
 import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
 import type { UtilityVariation } from "@/lib/utilities/vtpass"
 
-export default function DataPage() {
-  const [selectedProvider, setSelectedProvider] = React.useState(dataProviders[0])
+type DataPageProps = { embedded?: boolean; initialPhone?: string; initialProvider?: string }
+
+export default function DataPage({ embedded = false, initialPhone = "", initialProvider = "" }: DataPageProps = {}) {
+  const [selectedProvider, setSelectedProvider] = React.useState(dataProviders.find((provider) => provider.serviceId === initialProvider) ?? dataProviders[0])
   const [showProviderDropdown, setShowProviderDropdown] = React.useState(false)
   const [selectedPlan, setSelectedPlan] = React.useState<UtilityVariation | null>(null)
-  const [phoneNumber, setPhoneNumber] = React.useState("")
+  const [phoneNumber, setPhoneNumber] = React.useState(initialPhone)
   const [checkoutState, setCheckoutState] = React.useState<"idle" | "starting" | "confirming" | "delivered">("idle")
   const [checkoutError, setCheckoutError] = React.useState("")
   const [pendingOperation, setPendingOperation] = React.useState<string | null>(null)
@@ -105,18 +107,17 @@ export default function DataPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
+      {!embedded && <div>
         <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
           <Globe className="h-6 w-6 text-[var(--service-data)]" />
           Buy Data
         </h1>
         <p className="text-sm text-muted-foreground">Purchase data bundles for any network</p>
-      </div>
+      </div>}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className={embedded ? "grid gap-6" : "grid gap-6 lg:grid-cols-3"}>
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className={embedded ? "space-y-4" : "lg:col-span-2 space-y-4"}>
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Data Bundle</CardTitle>
@@ -273,7 +274,7 @@ export default function DataPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        {!embedded && <div className="space-y-4">
           {/* Recent Numbers */}
           <Card>
             <CardHeader className="pb-2">
@@ -306,7 +307,7 @@ export default function DataPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </div>}
       </div>
     </div>
   )
