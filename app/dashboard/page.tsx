@@ -10,17 +10,19 @@ import DataPage from "@/app/dashboard/data/page"
 import ElectricityPage from "@/app/dashboard/electricity/page"
 import InternetPage from "@/app/dashboard/internet/page"
 import TVPage from "@/app/dashboard/tv/page"
+import { TransferWorkspace } from "@/components/transfers/transfer-workspace"
 import { useUtilityVariations } from "@/lib/utilities/use-utility-variations"
 import type { UtilityVariation } from "@/lib/utilities/vtpass"
 import {
   ArrowRight, Globe, GraduationCap, Loader2, Mic, RefreshCw,
-  Send, Sparkles, Smartphone, Tv, Wifi, Zap,
+  Send, SendHorizontal, Sparkles, Smartphone, Tv, Wifi, Zap,
 } from "lucide-react"
 
-type ServiceId = "airtime" | "data" | "electricity" | "internet" | "tv" | "education" | "international"
+type ServiceId = "transfer" | "airtime" | "data" | "electricity" | "internet" | "tv" | "education" | "international"
 type Draft = { service: ServiceId; provider?: string; identifier?: string; amount?: number }
 
 const services = [
+  { id: "transfer" as const, label: "Transfer", icon: SendHorizontal, color: "var(--primary)", bg: "color-mix(in oklab, var(--primary) 12%, transparent)" },
   { id: "airtime" as const, label: "Airtime", icon: Smartphone, color: "var(--service-airtime)", bg: "var(--service-airtime-bg)" },
   { id: "data" as const, label: "Data", icon: Globe, color: "var(--service-data)", bg: "var(--service-data-bg)" },
   { id: "electricity" as const, label: "Electricity", icon: Zap, color: "var(--service-electricity)", bg: "var(--service-electricity-bg)" },
@@ -112,6 +114,7 @@ export default function DashboardPage() {
   }
 
   const workspace = {
+    transfer: <TransferWorkspace embedded />,
     airtime: <AirtimePage key={`airtime-${draft.identifier}-${draft.amount}`} embedded initialPhone={draft.identifier} initialProvider={draft.provider} initialAmount={draft.amount} />,
     data: <DataPage key={`data-${draft.identifier}-${draft.provider}`} embedded initialPhone={draft.identifier} initialProvider={draft.provider} />,
     electricity: <ElectricityPage key={`electricity-${draft.identifier}-${draft.amount}`} embedded initialMeter={draft.identifier} initialProvider={draft.provider} initialAmount={draft.amount} />,

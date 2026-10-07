@@ -28,10 +28,12 @@ import {
   Gift,
   ChevronDown,
   BarChart3,
+  SendHorizontal,
 } from "lucide-react"
 
 const navLinks = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Transfer", href: "/dashboard/transfer", icon: SendHorizontal },
   { label: "Airtime", href: "/dashboard/airtime", icon: Smartphone },
   { label: "Data", href: "/dashboard/data", icon: Globe },
   { label: "Electricity", href: "/dashboard/electricity", icon: Zap },
